@@ -3,11 +3,11 @@ import shutil
 from lxml import etree
 
 # Define and change to the path of MSCam data folder
-path_MSCam = r'C:\Users\Darren Wu\Desktop\SpaceInfos\2023\TW1Cont\MSCam'
+path_MSCam = r'C:\Users\Darren Wu\Desktop\SpaceInfos\2023\TW1Cont\MSCam\MSCam Extra Files'
 os.chdir(path_MSCam)
 
 # Define path to generic label file
-path_generic_2BL = r'C:\Users\Darren Wu\Desktop\SpaceInfos\2023\TW1Cont\MSCam\MSCam Unused Files\generic_M.2BL'
+path_generic_2BL = r'C:\Users\Darren Wu\Desktop\SpaceInfos\2023\TW1Cont\MSCam\MSCam Extra Files\Generic Label File\generic_M.2BL'
 
 p = []
 for filename in glob.glob('*.2B'):
@@ -24,6 +24,8 @@ for filename in glob.glob('*.2B'):
         root[1][0][0].text = filename_bare + '.2A'
         root[2][5][0].text = filename_bare + '.2B'
         root[3][0][0].text = filename_bare + '.2B'
+        root[3][1][4][1].text = '2048'
+        root[3][1][5][1].text = '2048'
         et.write(path_2BL_out, encoding="utf-8", xml_declaration=True, pretty_print=True)
         print('DONE!')
 print('2BL label generation complete.')

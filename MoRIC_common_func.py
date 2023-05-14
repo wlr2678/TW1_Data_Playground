@@ -29,7 +29,7 @@ def read_pds(path):
     data = pds4_read(path, quiet=True)
     img = np.array(data[0].data)
     img = img_as_float(img)
-    coor = pd.DataFrame(data[1].data)
+    coor = pd.DataFrame(data[1].data)[['Row', 'Column', 'Longitude', 'Latitude']]
     return img, coor # NumPy array for image, pandas DataFrame for table
 
 def create_plot_layout(layout, gs_kw, figsize=(5, 5)):

@@ -32,7 +32,7 @@ def read_pds(path):
     coor = pd.DataFrame(data[1].data)
     return img, coor # NumPy array for image, pandas DataFrame for table
 
-def create_plot_layout(layout, gs_kw, figsize):
+def create_plot_layout(layout, gs_kw, figsize=(5, 5)):
     '''Create plot layout from layout definition (2D array), gridspec kw (dict of ratios) and figsize (tuple)'''
     fig, axes = plt.subplot_mosaic(layout, gridspec_kw=gs_kw, figsize=figsize, layout='constrained')
     return fig, axes
@@ -50,9 +50,9 @@ def prune_coor(coor):
     right_edge = coor[coor['Column'] == size_x]
     return upper_edge, pd.concat([lower_edge, left_edge, right_edge]).drop_duplicates().reset_index(drop=True)
 
-def plot_base_map(ax_map, map_path):
+def plot_base_map(ax_map, path_map):
     '''Create a plot of base Mars map'''
-    map_image = plt.imread(map_path)
+    map_image = plt.imread(path_map)
     ax_map.imshow(map_image, extent = [-180, 180, -90, 90], aspect=1)
     
 def plot_coor(ax_map, upper_edge, other_edges, style1='.r', style2='.y'):

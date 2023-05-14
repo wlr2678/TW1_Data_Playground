@@ -24,13 +24,12 @@ def load_data_list(search_condition):
     print('File list loaded.')
     return p
 
-def read_pds(path, payload='NaTeCam'):
+def read_pds(path):
     '''Read PDS4 data: images only for NaTeCam and with coordinates for MoRIC data'''
     data = pds4_read(path, quiet=True)
     img = np.array(data[0].data)
     img = img_as_float(img)
-    if payload == 'MoRIC':
-        coor = pd.DataFrame(data[1].data)
+    coor = pd.DataFrame(data[1].data)
     return img, coor # NumPy array for image, pandas DataFrame for table
 
 def create_plot_layout(layout, gs_kw, figsize):

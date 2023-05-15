@@ -125,7 +125,7 @@ def stretch_img(img, percent=0.5):
 
 def export_img(name, img):
     pil_img = Image.fromarray(np.clip(img*255, 0, 255).astype('uint8'))
-    pil_img.save(name)
+    pil_img.save(name, quality=95, subsampling=0)
 
 def export_image_list(path_list, list_name):
     folder_out = 'POI Batch - ' + list_name
@@ -135,17 +135,25 @@ def export_image_list(path_list, list_name):
     else:
         print('Error: folder already exists!')
         return
+    # Write path_list to a text file
+    with open(f'{folder_out}\datalabels.txt', 'w') as fp:
+        for filename in path_list:
+            fp.write(f"{filename.removesuffix('.2CL')}\n")
+
     for filename in path_list:
         img = read_pds(filename)[0]
         print('Processing and exporting file ({index}) {name}'.format(index=path_list.index(filename)+1, name=filename.removesuffix('.2CL')))
 
         #tonemap1 = cv.createTonemap(gamma=1)
-        tonemap1 = cv.createTonemapMantiuk(gamma=2, scale=1.1, saturation=1.6)
+        #tonemap1 = cv.createTonemapMantiuk(gamma=2, scale=1.1, saturation=1.6)
         #tonemap1 = cv.createTonemapReinhard(gamma=0.5, intensity=-2, light_adapt=1, color_adapt=0.5)
-        #tonemap1 = cv.createTonemapDrago(gamma=0.9, saturation=0.8, bias=0.8)
+        tonemap1 = cv.createTonemapDrago(gamma=0.9, saturation=0.7, bias=0.8)
         img = tonemap1.process(img)
         img = np.nan_to_num(img, copy=True, posinf=1, neginf=0)
         img = stretch_img(img)
 
-        export_img('{subfolder}\{name}.jpg'.format(subfolder=folder_out, name=filename.removesuffix('.2CL')), img)
+        data_number = filename.split('_')[2][-4:]
+        orbit_number = filename.split('_')[-2]
+        timestamp = filename.split('_')[5]
+        export_img('{subfolder}\\'.format(subfolder=folder_out) + orbit_number + '_' + data_number + '_' + timestamp + '.jpg', img)
         print('DONE')

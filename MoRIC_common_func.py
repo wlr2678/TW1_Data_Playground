@@ -59,3 +59,22 @@ def plot_coor(ax_map, upper_edge, other_edges, style1='.r', style2='.y'):
     '''Plot coordinates for an image'''
     ax_map.plot(upper_edge['Longitude'], upper_edge['Latitude'], style1, alpha=1, markersize=1.5)
     ax_map.plot(other_edges['Longitude'], other_edges['Latitude'], style2, alpha=1, markersize=1.5)
+
+def find_distance(coor1, coor2):
+    '''Find great-circle distance between two martian coordinates (DataFrame format) using the haversine formula'''
+    R = 3389.5e3 # Mean radius of Mars
+    # Degrees
+    lon_d1 = coor1['Longitude']
+    lon_d2 = coor2['Longitude']
+    lat_d1 = coor1['Latitude']
+    lat_d2 = coor2['Latitude']
+    
+    # Radians
+    lat_r1 = lat_d1 * np.pi/180
+    lat_r2 = lat_d2 * np.pi/180
+    dlat = (lat_d2-lat_d1) * np.pi/180
+    dlon = (lon_d2-lon_d1) * np.pi/180
+    
+    a = np.power(np.sin(dlat/2), 2) + np.cos(lat_r1) * np.cos(lat_r2) * np.power(np.sin(dlon/2), 2)
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
+    return R * c

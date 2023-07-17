@@ -14,6 +14,8 @@ import glob, os, shutil # For file operations
 
 import operator # For sorting
 
+from itertools import combinations # For pairwise comparison of images
+
 def format_path(path):
     return path.replace(os.sep, '/')
 
@@ -68,9 +70,9 @@ def find_distance(coor1, coor2):
     '''Find great-circle distance between two martian coordinates (DataFrame format) using the haversine formula'''
     R = 3389.5e3 # Mean radius of Mars
     # Degrees
-    lon_d1 = coor1['Longitude'][0]
+    lon_d1 = coor1['Longitude']
     lon_d2 = coor2['Longitude']
-    lat_d1 = coor1['Latitude'][0]
+    lat_d1 = coor1['Latitude']
     lat_d2 = coor2['Latitude']
     
     # Radians
@@ -84,7 +86,7 @@ def find_distance(coor1, coor2):
     return R * c / 1000
 
 def gen_coor(gmars_format):
-    '''Generate coordinate DataFrame from given string type coordinate specification copied from Google Mars'''
+    '''Generate coordinate DataFrame from given string type coordinate specification'''
     lon = gmars_format.split(',')[1].strip()
     lat = gmars_format.split(',')[0].strip()
     if lon[-1] == 'E':
@@ -116,6 +118,67 @@ def find_closest_images(df_POI, df_coor, search_radius=1000):
         print('No images found within the search radius, returning empty dict')
     return dist_chosen
 
+def find_bounded_images(bound_coor, df_coor):
+    '''Iterate through image coordinates in df_coor, check if each image is 
+    within the rectangular region defined by latitudes and longitudes in bound 
+    ((lat1, lat2), (lon1, lon2)) and return the images in bounds'''
+    lat1 = min(bound_coor[0])
+    lat2 = max(bound_coor[0])
+    lon1 = min(bound_coor[1])
+    lon2 = max(bound_coor[1])
+    chosen = []
+    for i, row in df_coor.iterrows():
+        lat_row = row['Latitude']
+        lon_row = row['Longitude']
+        if lat1 <= lat_row <= lat2:
+            if lon1 <= lon_row <= lon2:
+                chosen.append(i) # Image passes check for boundedness
+    return chosen
+
+def remove_quasi_duplicates(img_list, df_coor, threshold_centre = 50, threshold_corner = 50):
+    paths_to_remove = []
+    orbits_modified = []
+    for path1, path2 in combinations(img_list, 2):
+        centre_diff = find_distance(df_coor.loc[path1], df_coor.loc[path2])
+        if centre_diff <= threshold_centre:
+            uppercorner1 = pd.DataFrame(pds4_read(path1, quiet=True)[1].data)[['Longitude', 'Latitude']].iloc[0]
+            uppercorner2 =  pd.DataFrame(pds4_read(path2, quiet=True)[1].data)[['Longitude', 'Latitude']].iloc[0]
+            corner_diff = find_distance(uppercorner1, uppercorner2)
+            if corner_diff <= threshold_corner:
+                print(f'Image {path1}')
+                print(f'Image {path2} \n in close proximity.\nCentre:{centre_diff}, corner:{corner_diff}')
+                orbit_num1 = int(path1.split('_')[-2])
+                orbit_num2 = int(path2.split('_')[-2])
+                
+                if path1 in paths_to_remove and path2 in paths_to_remove:
+                    pass
+
+                elif path1 not in paths_to_remove and path2 not in paths_to_remove:
+                    if (orbit_num1 not in orbits_modified and orbit_num2 not in orbits_modified) or (orbit_num1 in orbits_modified and orbit_num2 in orbits_modified):
+                        if orbit_num1 > orbit_num2:
+                            path_to_remove = path1
+                            orbit_to_remove = orbit_num1
+                        else:
+                            path_to_remove = path2
+                            orbit_to_remove = orbit_num2
+                    else:
+                        if orbit_num1 in orbits_modified:
+                            path_to_remove = path1
+                            orbit_to_remove = orbit_num1
+                        else:
+                            path_to_remove = path2
+                            orbit_to_remove = orbit_num2
+                elif path1 in paths_to_remove:
+                    path_to_remove = path2
+                    orbit_to_remove = orbit_num2
+                elif path2 in paths_to_remove:
+                    path_to_remove = path1
+                    orbit_to_remove = orbit_num1
+                
+                paths_to_remove.append(path_to_remove)
+                orbits_modified.append(orbit_to_remove)
+    return paths_to_remove
+
 def stretch_img(img, percent=0.5):
     # cf https://www.harrisgeospatial.com/docs/BackgroundStretchTypes.html
     # Adapted for different percentages
@@ -127,9 +190,9 @@ def export_img(name, img):
     pil_img = Image.fromarray(np.clip(img*255, 0, 255).astype('uint8'))
     pil_img.save(name, quality=95, subsampling=0)
 
-def export_image_list(path_list, list_name):
+def export_image_list(path_list, list_name, create_subfolder=False):
     folder_out = 'POI Batch - ' + list_name
-    print(f'Creating subfolder {folder_out}')
+    print(f'Creating folder {folder_out}')
     if folder_out not in os.listdir(os.getcwd()):
         os.mkdir(folder_out)
     else:
@@ -155,5 +218,12 @@ def export_image_list(path_list, list_name):
         data_number = filename.split('_')[2][-4:]
         orbit_number = filename.split('_')[-2]
         timestamp = filename.split('_')[5]
-        export_img('{subfolder}\\'.format(subfolder=folder_out) + orbit_number + '_' + data_number + '_' + timestamp + '.jpg', img)
+        if create_subfolder:
+            sub_folder = orbit_number
+            if sub_folder not in os.listdir(folder_out):
+                print(f'Creating subfolder for orbit: {orbit_number}')
+                os.mkdir(folder_out + '\\' + sub_folder)
+            export_img('{folder}\\{subfolder}\\'.format(folder=folder_out, subfolder=sub_folder) + orbit_number + '_' + data_number + '_' + timestamp + '.jpg', img)
+        else:
+            export_img('{folder}\\'.format(folder=folder_out) + orbit_number + '_' + data_number + '_' + timestamp + '.jpg', img)
         print('DONE')
